@@ -31,7 +31,7 @@ export namespace mm {
 			std::println("Restoring pte...");
 		}
 
-		std::println("Everything is retored: {}", *reinterpret_cast<uint64_t*>(self) == reinterpret_cast<uint64_t>(self));
+		std::println("Everything is restored: {}", *reinterpret_cast<uint64_t*>(self) == reinterpret_cast<uint64_t>(self));
 	}
 
 	std::optional<int> find_free_pte() {
