@@ -4,14 +4,14 @@ module;
 #include <vector>
 #include <optional>
 
-#include "..\..\shared.h"
+#include "..\shared.h"
 
 export module memory_manager;
 
 export namespace mm {
 	pte_t* self = nullptr;
-	uint64_t old_pfn = 0;
-	int pt_index = 0;
+	uint64_t old_pfn = 0; // the old pfn of the self ref pte which was overwritten by us
+	int pt_index = 0; // the index of the self ref pte
 
 	std::vector<int> mappings{};
 
@@ -38,6 +38,7 @@ export namespace mm {
 		return std::nullopt;
 	}
 
+	// get the virtual address mapped by a given pte index within the same table of the self referencing pte obviously
 	uint8_t* get_pte_va(int pt_index) {
 		virtual_address_t va{ .address = reinterpret_cast<uint64_t>(self) };
 		va.pt_index = pt_index;

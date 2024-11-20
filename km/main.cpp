@@ -81,8 +81,8 @@ static NTSTATUS dispatch(PDEVICE_OBJECT, PIRP Irp) {
 		*out = old_pfn;
 		Irp->IoStatus.Information = sizeof(uint64_t);
 
+		// force a tlb flush just incase, alternatively use invlpg on the single entry above
 		__writecr3(__readcr3());
-
 		break;
 		}
 	default: {
@@ -97,9 +97,7 @@ static NTSTATUS dispatch(PDEVICE_OBJECT, PIRP Irp) {
 	return status;
 }
 
-// entry point
 void DriverUnload(PDRIVER_OBJECT);
-
 extern "C" NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING)
 {
 	DriverObject->DriverUnload = DriverUnload;

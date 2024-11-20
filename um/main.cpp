@@ -1,7 +1,7 @@
 #include <print>
 #include <iostream>
 
-#include "..\..\shared.h"
+#include "..\shared.h"
 #include <Windows.h>
 
 import memory_manager;
