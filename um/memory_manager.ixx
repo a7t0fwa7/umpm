@@ -3,6 +3,7 @@ module;
 #include <print>
 #include <vector>
 #include <optional>
+#include <thread>
 
 #include "..\shared.h"
 
@@ -23,8 +24,14 @@ export namespace mm {
 			self[index].value = 0;
 		}
 
-		// copy the old_pfn into the self referencing pte so the windows vmm doesnt bugcheck
-		self[pt_index].page_pa = old_pfn;
+		// the magic value we placed initially should still be there at the original pfn, if we can read it then we know the old_pfn has been restored and were good to exit the process
+		while(*reinterpret_cast<uint64_t*>(self) != reinterpret_cast<uint64_t>(self)) {
+			self[pt_index].page_pa = old_pfn;
+			std::this_thread::sleep_for(std::chrono::milliseconds(500));
+			std::println("Restoring pte...");
+		}
+
+		std::println("Everything is retored: {}", *reinterpret_cast<uint64_t*>(self) == reinterpret_cast<uint64_t>(self));
 	}
 
 	std::optional<int> find_free_pte() {

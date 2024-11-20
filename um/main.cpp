@@ -11,7 +11,7 @@ LONG vectored_handler(PEXCEPTION_POINTERS exception) {
 	std::println("Exception caught: {:#x}", exception->ExceptionRecord->ExceptionCode);
 
 	mm::cleanup();
-	return EXCEPTION_CONTINUE_SEARCH;
+	ExitProcess(1);
 }
 
 
@@ -27,7 +27,9 @@ int main() {
 
 	mm::self = (pte_t*)VirtualAlloc(nullptr, 0x1000, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 	memset(mm::self, 0xFF, 0x1000);
-	*(void**)mm::self = mm::self;
+
+	// we place a magic value at the start, necessary for us and the driver
+	*reinterpret_cast<uint64_t*>(mm::self) = reinterpret_cast<uint64_t>(mm::self);
 	std::println("{}", (void*)(mm::self));
 
 	DWORD bytes_returned = 0;
@@ -41,7 +43,6 @@ int main() {
 	CloseHandle(driver);
 
 	mm::pt_index = virtual_address_t{ .address = reinterpret_cast<uint64_t>(mm::self) }.pt_index;
-
 	mm::map_page(0x1ad000, [](uint8_t* va) {
 		for (int i = 256; i < 512; i++) {
 			std::println("[{}]: {:#x}", i, static_cast<uint64_t>(reinterpret_cast<pml4e_t*>(va)[i].page_pa) << 12);
