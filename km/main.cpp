@@ -29,14 +29,14 @@ static NTSTATUS dispatch(PDEVICE_OBJECT, PIRP Irp) {
 
 	auto code = stack->Parameters.DeviceIoControl.IoControlCode;
 	switch (static_cast<control_codes>(code)) {
-	case control_codes::get_free_pte: {
+	case control_codes::create_recursive_pte: {
 		virtual_address_t self_copy{ .address = reinterpret_cast<uint64_t>(MmGetVirtualForPhysical({.QuadPart = static_cast<int64_t>(__readcr3())}) )};
 		self_copy.pdpt_index = self_copy.pml4_index;
 		self_copy.pd_index = self_copy.pml4_index;
 		self_copy.pt_index = self_copy.pml4_index;
 
 		// va is a 4kb page allocated by the usermode application
-		virtual_address_t va{ .address = *reinterpret_cast<uint64_t*>(Irp->AssociatedIrp.SystemBuffer) };
+		virtual_address_t va{ .address = *static_cast<uint64_t*>(Irp->AssociatedIrp.SystemBuffer) };
 
 		// attempt to translate the given virtual address using the self referencing pml4e that windows places in the pml4 table
 		// since the index is unknown, we initially use MmGetVirtualForPhysical, the self referencing pml4e index changes everytime u boot into windows but it stays the same for every process until u reboot again
@@ -74,11 +74,8 @@ static NTSTATUS dispatch(PDEVICE_OBJECT, PIRP Irp) {
 		// copy the old pfn so the usermode process can restore it before exiting, this way the windows vmm doesnt cause a bugcheck
 		uint64_t old_pfn = pte.page_pa;
 		pte.page_pa = pde.page_pa; // map the given virtual address to a table of ptes, a self referencing pte
-
-		print("pte: %llx\n", va.address);
 		
-		auto out = static_cast<uint64_t*>(Irp->AssociatedIrp.SystemBuffer);
-		*out = old_pfn;
+		*static_cast<uint64_t*>(Irp->AssociatedIrp.SystemBuffer) = old_pfn;
 		Irp->IoStatus.Information = sizeof(uint64_t);
 
 		// force a tlb flush just incase, alternatively use invlpg on the single entry above

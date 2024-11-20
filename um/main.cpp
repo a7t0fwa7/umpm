@@ -31,7 +31,7 @@ int main() {
 	std::println("{}", (void*)(mm::self));
 
 	DWORD bytes_returned = 0;
-	auto success = DeviceIoControl(driver, static_cast<uint32_t>(control_codes::get_free_pte), mm::self, 0x1000, &mm::old_pfn, sizeof(mm::old_pfn), &bytes_returned, nullptr);
+	auto success = DeviceIoControl(driver, static_cast<uint32_t>(control_codes::create_recursive_pte), mm::self, 0x1000, &mm::old_pfn, sizeof(mm::old_pfn), &bytes_returned, nullptr);
 
 	if (!success) {
 		std::println("{}", std::error_code(GetLastError(), std::system_category()).message());

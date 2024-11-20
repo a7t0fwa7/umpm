@@ -17,7 +17,7 @@ typedef unsigned long long uint64_t;
 
 
 enum class control_codes {
-	get_free_pte = CTL_CODE(FILE_DEVICE_UNKNOWN, 999, METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
+	create_recursive_pte = CTL_CODE(FILE_DEVICE_UNKNOWN, 999, METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
 };
 
 #pragma warning(disable: 4201)
