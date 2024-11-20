@@ -28,6 +28,6 @@ A proof of concept showing how you can modify your page tables from usermode and
 - This ensures that everything besides the initial page table modification, is done in usermode and **doesn't require any kernel interaction**.
 - For cleanup, we can **simply restore the pfn of the pte we initially modified** to be a self referencing entry, this is also **possible from usermode**. The reason it must be restored is because of the windows vmm which will cause a bigcheck in the case of our illegal mappings.
 
-This is how the pte looks:
+This is how the page tables look after adding the self referencing pte:
 *The application you see in the screenshot is [PTView](https://github.com/VollRagm/PTView)*
 ![PTView](assets/ptview.png)
