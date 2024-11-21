@@ -262,12 +262,11 @@ export namespace spf {
     inline const std::map<std::uintptr_t, std::uintptr_t>& memory_map::ranges() {
         for (const auto& range : ranges_) {
             auto start = range.pfn << 12;
-            auto bytes = (range.page_count << 2) * 1024;
+            auto bytes = range.page_count * 0x1000;
             auto end = start + bytes;
 
             physical_memory_ranges[start] = end;
         }
-
 
         return physical_memory_ranges;
     }
