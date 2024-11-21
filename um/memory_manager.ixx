@@ -91,12 +91,15 @@ namespace mm {
 		copy.page_pa = physical_address >> 12;
 
 		volatile auto& pte = self[free_index];
-		auto old_val = pte.value;
+		pte_t old_val{ .value = pte.value };
 
 		// these protection flags do not affect our access to the dummy page, its always read/write 
-		static bool write{};
+		static bool flip{};
 		DWORD old_protect{};
-		DWORD new_protect = write ? PAGE_READONLY : PAGE_READWRITE;
+		DWORD new_protect = flip ? PAGE_READONLY : PAGE_READWRITE;
+
+		// calculate the old value without accessing the page again because it will be cached in the TLB
+		old_val.write = new_protect == PAGE_READWRITE;
 
 		// force an `invlpg` on the dummy page which will invalidate the cached translation within the tlb, 
 		// ensuring our modifications to the page tables are respected by the processor
@@ -107,7 +110,7 @@ namespace mm {
 			std::unreachable();
 			return false;
 		}
-		write = !write;
+		flip = !flip;
 
 		// map, callback, unmap
 		pte.value = copy.value;
@@ -115,7 +118,7 @@ namespace mm {
 		va += offset; // add the offset back incase the physical address wasnt page aligned
 		auto result = func(va);
 
-		pte.value = old_val;
+		pte.value = old_val.value;
 
 		return result;
 	}
