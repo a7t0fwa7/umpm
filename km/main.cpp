@@ -95,7 +95,7 @@ static NTSTATUS dispatch(PDEVICE_OBJECT, PIRP Irp) {
 }
 
 void DriverUnload(PDRIVER_OBJECT);
-NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING)
+extern "C" NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING)
 {
 	DriverObject->DriverUnload = DriverUnload;
 
