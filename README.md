@@ -17,7 +17,7 @@ A demonstration highlighting how page tables can be modified from user mode to e
 3. Configure and build:
    ```
    cmake ..
-   cmake --build . -- config Release
+   cmake --build . --config Release
    ```
 
 ## How it works
