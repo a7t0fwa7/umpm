@@ -30,13 +30,13 @@ static NTSTATUS dispatch(PDEVICE_OBJECT, PIRP Irp) {
 	auto code = stack->Parameters.DeviceIoControl.IoControlCode;
 	switch (static_cast<control_codes>(code)) {
 	case control_codes::create_recursive_pte: {
-		virtual_address_t self_copy{ .address = reinterpret_cast<uint64_t>(MmGetVirtualForPhysical({.QuadPart = static_cast<int64_t>(__readcr3())}) )};
+		virtual_address_t self_copy{ .address = reinterpret_cast<std::uint64_t>(MmGetVirtualForPhysical({.QuadPart = static_cast<std::int64_t>(__readcr3())})) };
 		self_copy.pdpt_index = self_copy.pml4_index;
 		self_copy.pd_index = self_copy.pml4_index;
 		self_copy.pt_index = self_copy.pml4_index;
 
 		// va is a 4kb page allocated by the usermode application
-		virtual_address_t va{ .address = *static_cast<uint64_t*>(Irp->AssociatedIrp.SystemBuffer) };
+		virtual_address_t va{ .address = *static_cast<std::uint64_t*>(Irp->AssociatedIrp.SystemBuffer) };
 
 		// attempt to translate the given virtual address using the self referencing pml4e that windows places in the pml4 table
 		// since the index is unknown, we initially use MmGetVirtualForPhysical, the self referencing pml4e index changes everytime u boot into windows but it stays the same for every process until u reboot again
@@ -72,16 +72,16 @@ static NTSTATUS dispatch(PDEVICE_OBJECT, PIRP Irp) {
 		}
 
 		// copy the old pfn so the usermode process can restore it before exiting, this way the windows vmm doesnt cause a bugcheck
-		uint64_t old_pfn = pte.page_pa;
-		pte.page_pa = pde.page_pa; // map the given virtual address to a table of ptes, a self referencing pte
-		
-		*static_cast<uint64_t*>(Irp->AssociatedIrp.SystemBuffer) = old_pfn;
-		Irp->IoStatus.Information = sizeof(uint64_t);
+		std::uint64_t old_pfn = pte.page_pa;
+		pte.page_pa = pde.page_pa; // map the given virtual address to the array of ptes it resides in, creating a self referencing pte
+
+		*static_cast<std::uint64_t*>(Irp->AssociatedIrp.SystemBuffer) = old_pfn;
+		Irp->IoStatus.Information = sizeof(std::uint64_t);
 
 		// force a tlb flush just incase, alternatively use invlpg on the single entry above
 		__writecr3(__readcr3());
 		break;
-		}
+	}
 	default: {
 		status = STATUS_INVALID_DEVICE_REQUEST;
 		break;
@@ -95,7 +95,7 @@ static NTSTATUS dispatch(PDEVICE_OBJECT, PIRP Irp) {
 }
 
 void DriverUnload(PDRIVER_OBJECT);
-extern "C" NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING)
+NTSTATUS entry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING)
 {
 	DriverObject->DriverUnload = DriverUnload;
 
@@ -120,13 +120,13 @@ extern "C" NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING)
 		Irp->IoStatus.Status = STATUS_SUCCESS;
 		IoCompleteRequest(Irp, IO_NO_INCREMENT);
 		return STATUS_SUCCESS;
-	};
+		};
 
 	DriverObject->MajorFunction[IRP_MJ_CLOSE] = [](PDEVICE_OBJECT, PIRP Irp) {
 		Irp->IoStatus.Status = STATUS_SUCCESS;
 		IoCompleteRequest(Irp, IO_NO_INCREMENT);
 		return STATUS_SUCCESS;
-	};
+		};
 
 	DriverObject->MajorFunction[IRP_MJ_DEVICE_CONTROL] = dispatch;
 
@@ -136,9 +136,20 @@ extern "C" NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING)
 	return STATUS_SUCCESS;
 }
 
-
 void DriverUnload(PDRIVER_OBJECT DriverObject) {
 	UNICODE_STRING sym_link = RTL_CONSTANT_STRING(L"\\DosDevices\\UMPM");
 	IoDeleteSymbolicLink(&sym_link);
 	IoDeleteDevice(DriverObject->DeviceObject);
+}
+
+extern "C" {
+	NTKERNELAPI NTSTATUS IoCreateDriver(PUNICODE_STRING DriverName,
+		PDRIVER_INITIALIZE InitializationFunction);
+};
+
+extern "C" NTSTATUS DriverEntry(PDRIVER_OBJECT, PUNICODE_STRING) {
+	UNICODE_STRING driver_name = {};
+	RtlInitUnicodeString(&driver_name, L"\\Driver\\UMPM");
+
+	return IoCreateDriver(&driver_name, entry);
 }
