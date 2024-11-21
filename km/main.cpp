@@ -95,7 +95,7 @@ static NTSTATUS dispatch(PDEVICE_OBJECT, PIRP Irp) {
 }
 
 void DriverUnload(PDRIVER_OBJECT);
-NTSTATUS entry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING)
+NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING)
 {
 	DriverObject->DriverUnload = DriverUnload;
 
@@ -142,14 +142,14 @@ void DriverUnload(PDRIVER_OBJECT DriverObject) {
 	IoDeleteDevice(DriverObject->DeviceObject);
 }
 
-extern "C" {
-	NTKERNELAPI NTSTATUS IoCreateDriver(PUNICODE_STRING DriverName,
-		PDRIVER_INITIALIZE InitializationFunction);
-};
-
-extern "C" NTSTATUS DriverEntry(PDRIVER_OBJECT, PUNICODE_STRING) {
-	UNICODE_STRING driver_name = {};
-	RtlInitUnicodeString(&driver_name, L"\\Driver\\UMPM");
-
-	return IoCreateDriver(&driver_name, entry);
-}
+//extern "C" {
+//	NTKERNELAPI NTSTATUS IoCreateDriver(PUNICODE_STRING DriverName,
+//		PDRIVER_INITIALIZE InitializationFunction);
+//};
+//
+//extern "C" NTSTATUS DriverEntry(PDRIVER_OBJECT, PUNICODE_STRING) {
+//	UNICODE_STRING driver_name = {};
+//	RtlInitUnicodeString(&driver_name, L"\\Driver\\UMPM");
+//
+//	return IoCreateDriver(&driver_name, entry);
+//}
