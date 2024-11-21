@@ -19,9 +19,18 @@ namespace std {
 #endif
 
 
-enum class control_codes {
-	create_recursive_pte = CTL_CODE(FILE_DEVICE_UNKNOWN, 999, METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
-};
+#ifndef _KERNEL_MODE
+namespace driver {
+#endif
+
+    enum class control_codes : std::uint32_t {
+        create_recursive_pte = CTL_CODE(FILE_DEVICE_UNKNOWN, 999, METHOD_BUFFERED, FILE_SPECIAL_ACCESS),
+        invlpg = CTL_CODE(FILE_DEVICE_UNKNOWN, 1000, METHOD_BUFFERED, FILE_SPECIAL_ACCESS),
+    };
+
+#ifndef _KERNEL_MODE
+}
+#endif
 
 #pragma warning(disable: 4201)
 union pml4e_t {

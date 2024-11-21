@@ -6,11 +6,11 @@
 #include <Windows.h>
 
 import memory_manager;
+import driver;
 
 // vectord exception handler
 LONG vectored_handler(PEXCEPTION_POINTERS exception) {
-	std::println("Exception caught: {:#x}", exception->ExceptionRecord->ExceptionCode);
-
+	std::println("exception code: {:#x}", exception->ExceptionRecord->ExceptionCode);
 	mm::cleanup();
 	std::cin.get();
 	ExitProcess(1);
@@ -18,35 +18,32 @@ LONG vectored_handler(PEXCEPTION_POINTERS exception) {
 
 int main() {
 	AddVectoredExceptionHandler(1, vectored_handler);
+	driver::initialize();
 
-	HANDLE driver = CreateFileA("\\\\.\\UMPM", GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+	// reserve a page for the self referencing pte and another page that gets continiously remapped to the target physical address
+	auto allocation = VirtualAlloc(nullptr, 0x2000, MEM_RESERVE, PAGE_NOACCESS);
 
-	if (driver == INVALID_HANDLE_VALUE) {
-		std::println("Failed to open driver handle: {}", std::error_code(GetLastError(), std::system_category()).message());
-		return 1;
-	}
-
-	auto allocation = VirtualAlloc(nullptr, 0x1000, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-	memset(allocation, 0xFF, 0x1000);
+	allocation = VirtualAlloc(allocation, 0x1000, MEM_COMMIT, PAGE_READWRITE);
+	memset(allocation, -1, 0x1000);
 	if (!VirtualLock(allocation, 0x1000))
 		std::println("failed to lock");
-
 
 	// we place a magic value at the start, necessary for us and the driver
 	*reinterpret_cast<std::uint64_t*>(allocation) = reinterpret_cast<std::uint64_t>(allocation);
 
 	std::uint64_t old_pfn{};
 	DWORD bytes_returned = 0;
-	auto success = DeviceIoControl(driver, static_cast<std::uint32_t>(control_codes::create_recursive_pte), allocation, 0x1000, &old_pfn, sizeof(old_pfn), &bytes_returned, nullptr);
-
+	auto success = driver::io(driver::control_codes::create_recursive_pte, allocation, sizeof(allocation), &old_pfn, sizeof(old_pfn));
 	if (!success) {
 		std::println("{}", std::error_code(GetLastError(), std::system_category()).message());
-		CloseHandle(driver);
 		return 1;
 	}
-	CloseHandle(driver);
 
-	mm::initialize(allocation, old_pfn);
+	if (auto r = mm::initialize(allocation, old_pfn); !r)
+	{
+		std::println("failed to initialize memory manager: {}", std::to_underlying(r.error()));
+		return 1;
+	}
 
 	// Example
 	//mm::map_page(0x1ad000, [](std::uint8_t* va) -> int {
@@ -69,11 +66,10 @@ int main() {
 	//	}
 	//}
 
+	// attempt to find the page tables of our own process
 	mm::process p{
 		.base = reinterpret_cast<std::uint64_t>(GetModuleHandleA(nullptr))
 	};
-
-	std::println("Self: {}", (void*)allocation);
 
 	auto start = std::chrono::high_resolution_clock::now();
 	auto r = p.find_cr3();
@@ -82,7 +78,7 @@ int main() {
 		(end - start),
 		std::chrono::duration_cast<std::chrono::microseconds>(end - start),
 		std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
-
+	
 	if (r) {
 		std::println("found cr3: {:#x}", p.cr3);
 		std::println("{:#x}", p.translate(p.base).value_or(-1));
@@ -90,5 +86,9 @@ int main() {
 	else
 		std::println("failed to find cr3");
 
+	
+	
+
+	std::cin.get();
 	mm::cleanup();
 }

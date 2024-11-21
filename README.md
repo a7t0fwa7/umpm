@@ -27,7 +27,7 @@ A demonstration highlighting how page tables can be modified from user mode to e
 - Through this pte **the usermode process can access the pt** and modify it's entries to map in any part of physical memory.
 - This ensures that everything besides the initial page table modification, is done in usermode and **doesn't require any kernel interaction**.
 - For cleanup, we can **simply restore the pfn of the pte we initially modified** to be a self referencing entry, this is also **possible from usermode**. The reason it must be restored is because of the windows vmm which will cause a bigcheck in the case of our illegal mappings.
-- You may come across issues regarding the tlb when using the same pte to map different parts of memory, to avoid this a simple and hopefully temporary fix is to use a random pte index.
+- Tlb flushes are necessary when modifying page tables but not possible from usermode. Instead we ask the os to **flush the entries that we modified through `VirtualProtect`** and ensure the cpu never caches it. 
 
 This is how the page tables look after adding the self referencing pte:
 ![PTView](assets/ptview.png)

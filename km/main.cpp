@@ -78,8 +78,14 @@ static NTSTATUS dispatch(PDEVICE_OBJECT, PIRP Irp) {
 		*static_cast<std::uint64_t*>(Irp->AssociatedIrp.SystemBuffer) = old_pfn;
 		Irp->IoStatus.Information = sizeof(std::uint64_t);
 
-		// force a tlb flush just incase, alternatively use invlpg on the single entry above
-		__writecr3(__readcr3());
+		// flush the tlb entry for the given virtual address
+		__invlpg(reinterpret_cast<void*>(va.address));
+		break;
+	}
+	case control_codes::invlpg: { // not used, optional for testing environments
+		// force a tlb flush on the given virtual address
+		__invlpg(*static_cast<void**>(Irp->AssociatedIrp.SystemBuffer));
+		status = STATUS_SUCCESS;
 		break;
 	}
 	default: {
