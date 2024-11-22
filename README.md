@@ -16,7 +16,7 @@ A demonstration showcasing how user-mode manipulation of page tables can enable 
 
 3. Configure and build:
    ```
-   cmake ..
+   cmake -G "Visual Studio 17 2022" ..
    cmake --build . --config Release
    ```
 
