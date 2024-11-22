@@ -69,6 +69,7 @@ int main() {
 	mm::process p{
 		.base = reinterpret_cast<std::uint64_t>(GetModuleHandleA(nullptr))
 	};
+	std::println("base: {:#x}", p.base);
 
 	auto start = std::chrono::high_resolution_clock::now();
 	auto r = p.find_cr3();
