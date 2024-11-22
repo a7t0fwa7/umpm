@@ -24,8 +24,8 @@ int main() {
 	auto allocation = VirtualAlloc(nullptr, 0x2000, MEM_RESERVE, PAGE_NOACCESS);
 
 	allocation = VirtualAlloc(allocation, 0x1000, MEM_COMMIT, PAGE_READWRITE);
-	memset(allocation, -1, 0x1000);
-	if (!VirtualLock(allocation, 0x1000))
+
+	if (!VirtualLock(allocation, 0x1000)) 
 		std::println("failed to lock");
 
 	// we place a magic value at the start, necessary for us and the driver

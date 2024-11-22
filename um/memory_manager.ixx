@@ -38,7 +38,6 @@ namespace mm {
 		if (!dummy) {
 			std::println("Failed to allocate the dummy page: {}", std::error_code(GetLastError(), std::system_category()).message());
 		}
-		memset(dummy, -1, 0x1000);
 
 		if (!VirtualLock(dummy, 0x1000)) {
 			std::println("Failed to lock the memory: {}", std::error_code(GetLastError(), std::system_category()).message());
