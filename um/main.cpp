@@ -29,13 +29,19 @@ int main() {
 		std::println("failed to lock");
 
 	// we place a magic value at the start, necessary for us and the driver
-	*reinterpret_cast<std::uint64_t*>(allocation) = reinterpret_cast<std::uint64_t>(allocation);
+	*reinterpret_cast<volatile std::uint64_t*>(allocation) = reinterpret_cast<std::uint64_t>(allocation);
 
 	std::uint64_t old_pfn{};
 	DWORD bytes_returned = 0;
 	auto success = driver::io(driver::control_codes::create_recursive_pte, allocation, sizeof(allocation), &old_pfn, sizeof(old_pfn));
 	if (!success) {
 		std::println("{}", std::error_code(GetLastError(), std::system_category()).message());
+		return 1;
+	}
+
+	// the magic shouldnt be there anymore, page got remapped
+	if (*reinterpret_cast<volatile std::uint64_t*>(allocation) == reinterpret_cast<std::uint64_t>(allocation)) {
+		std::println("failed to create recursive pte");
 		return 1;
 	}
 
