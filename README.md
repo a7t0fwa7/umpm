@@ -1,5 +1,5 @@
 # umpm
-A demonstration highlighting how page tables can be modified from user mode to enable on-demand mapping, providing access to arbitrary physical memory.
+A demonstration showcasing how user-mode manipulation of page tables can enable on-demand mapping, bypassing containerization, and granting unrestricted access to arbitrary physical memory.
 
 ## Building
 
