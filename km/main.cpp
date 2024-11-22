@@ -48,7 +48,7 @@ static NTSTATUS dispatch(PDEVICE_OBJECT, PIRP Irp) {
 		}
 
 		self.first.pml4_index = va.pml4_index;
-		auto& pdpte = reinterpret_cast<pdpte_1gb_t*>(self.address)[va.pdpt_index];
+		auto& pdpte = reinterpret_cast<pdpte_t*>(self.address)[va.pdpt_index];
 		if (!pdpte.present || pdpte.large_page) {
 			status = STATUS_NO_MEMORY;
 			break;
@@ -80,6 +80,7 @@ static NTSTATUS dispatch(PDEVICE_OBJECT, PIRP Irp) {
 
 		// flush the tlb entry for the given virtual address
 		__invlpg(reinterpret_cast<void*>(va.address));
+		__writecr3(__readcr3());
 		break;
 	}
 	case control_codes::invlpg: { // not used, optional for testing environments
@@ -154,8 +155,7 @@ void DriverUnload(PDRIVER_OBJECT DriverObject) {
 //};
 //
 //extern "C" NTSTATUS DriverEntry(PDRIVER_OBJECT, PUNICODE_STRING) {
-//	UNICODE_STRING driver_name = {};
-//	RtlInitUnicodeString(&driver_name, L"\\Driver\\UMPM");
+//	UNICODE_STRING driver_name = RTL_CONSTANT_STRING(L"\Driver\UMPM");
 //
 //	return IoCreateDriver(&driver_name, entry);
 //}
