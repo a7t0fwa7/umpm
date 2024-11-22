@@ -155,7 +155,7 @@ void DriverUnload(PDRIVER_OBJECT DriverObject) {
 //};
 //
 //extern "C" NTSTATUS DriverEntry(PDRIVER_OBJECT, PUNICODE_STRING) {
-//	UNICODE_STRING driver_name = RTL_CONSTANT_STRING(L"\Driver\UMPM");
+//	UNICODE_STRING driver_name = RTL_CONSTANT_STRING(L"\\Driver\\UMPM");
 //
 //	return IoCreateDriver(&driver_name, entry);
 //}
