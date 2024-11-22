@@ -38,6 +38,7 @@ namespace mm {
 		if (!dummy) {
 			std::println("Failed to allocate the dummy page: {}", std::error_code(GetLastError(), std::system_category()).message());
 		}
+		memset(dummy, -1, 0x1000);
 
 		if (!VirtualLock(dummy, 0x1000)) {
 			std::println("Failed to lock the memory: {}", std::error_code(GetLastError(), std::system_category()).message());
@@ -46,24 +47,23 @@ namespace mm {
 		dummy_index = virtual_address_t{ .address = reinterpret_cast<std::uint64_t>(dummy) }.pt_index;
 		dummy_pfn = self[dummy_index].page_pa;
 		std::println("Dummy: {:#x}, Dummy PFN: {:#x}", reinterpret_cast<std::uint64_t>(dummy), dummy_pfn);
-
+		std::println("Self: {:#x}, Old PFN: {:#x}", reinterpret_cast<std::uint64_t>(self), old_pfn);
 
 		return {}; // success
 	}
 
 	export void cleanup() {
-		if (!self || !old_pfn || !pt_index) return;
-		std::println("Self: {:#x}, Old PFN: {}", reinterpret_cast<std::uint64_t>(self), old_pfn);
+		if (!self || !old_pfn || !pt_index || !dummy || !dummy_pfn || !dummy_index) return;
 
-		// the magic value we placed initially should still be there at the original pfn, 
-		// if we can read it then we know the old_pfn has been restored and were good to exit the process
-		while (*reinterpret_cast<std::uint64_t*>(self) != reinterpret_cast<std::uint64_t>(self)) {
-			self[dummy_index].page_pa = dummy_pfn;
-			self[pt_index].page_pa = old_pfn;
-			FlushProcessWriteBuffers();
-		}
+		// its important to restore the self referencing pte at last
+		self[dummy_index].page_pa = dummy_pfn;
+		self[pt_index].page_pa = old_pfn;
+		FlushProcessWriteBuffers();
+		DWORD old_protect{};
+		VirtualProtect(self, 0x1000, PAGE_READONLY, &old_protect); // flush it again so the check below goes through
 
-		std::println("Everything is restored: {}", self->value == reinterpret_cast<std::uint64_t>(self));
+		// check for the magic value after restoring the original pfn
+		std::println("Everything is restored: {}", *reinterpret_cast<volatile std::uint64_t*>(self) == reinterpret_cast<std::uint64_t>(self));
 		if (!VirtualUnlock(self, 0x2000)) {
 			std::println("Failed to unlock the memory: {}", std::error_code(GetLastError(), std::system_category()).message());
 		}
@@ -86,19 +86,19 @@ namespace mm {
 		auto free_index = dummy_index;
 		auto va = reinterpret_cast<std::uint8_t*>(dummy);
 
+		volatile auto& pte = self[free_index];
+		pte_t old_val{ .value = pte.value };
+
 		// the self referencing pte has all the necessary attributes, we just copy it and modify the pfn
 		auto copy = self[pt_index];
 		copy.page_pa = physical_address >> 12;
-
-		volatile auto& pte = self[free_index];
-		pte_t old_val{ .value = pte.value };
 
 		// these protection flags do not affect our access to the dummy page, its always read/write 
 		static bool flip{};
 		DWORD old_protect{};
 		DWORD new_protect = flip ? PAGE_READONLY : PAGE_READWRITE;
 
-		// calculate the old value without accessing the page again because it will be cached in the TLB
+		// calculate the old_value permissions without accessing the pte again
 		old_val.write = new_protect == PAGE_READWRITE;
 
 		// force an `invlpg` on the dummy page which will invalidate the cached translation within the tlb, 
@@ -107,7 +107,7 @@ namespace mm {
 			std::println("Failed to change the protection of the page: {}",
 				std::error_code(GetLastError(), std::system_category()).message());
 
-			std::unreachable();
+			std::unreachable(); // fallback to the veh and cleanup the page tables
 			return false;
 		}
 		flip = !flip;

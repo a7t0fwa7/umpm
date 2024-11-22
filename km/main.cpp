@@ -80,7 +80,6 @@ static NTSTATUS dispatch(PDEVICE_OBJECT, PIRP Irp) {
 
 		// flush the tlb entry for the given virtual address
 		__invlpg(reinterpret_cast<void*>(va.address));
-		__writecr3(__readcr3());
 		break;
 	}
 	case control_codes::invlpg: { // not used, optional for testing environments
@@ -149,13 +148,17 @@ void DriverUnload(PDRIVER_OBJECT DriverObject) {
 	IoDeleteDevice(DriverObject->DeviceObject);
 }
 
-//extern "C" {
-//	NTKERNELAPI NTSTATUS IoCreateDriver(PUNICODE_STRING DriverName,
-//		PDRIVER_INITIALIZE InitializationFunction);
-//};
-//
-//extern "C" NTSTATUS DriverEntry(PDRIVER_OBJECT, PUNICODE_STRING) {
-//	UNICODE_STRING driver_name = RTL_CONSTANT_STRING(L"\Driver\UMPM");
-//
-//	return IoCreateDriver(&driver_name, entry);
-//}
+/*
+
+extern "C" {
+	NTKERNELAPI NTSTATUS IoCreateDriver(PUNICODE_STRING DriverName,
+		PDRIVER_INITIALIZE InitializationFunction);
+};
+
+extern "C" NTSTATUS DriverEntry(PDRIVER_OBJECT, PUNICODE_STRING) {
+	UNICODE_STRING driver_name = RTL_CONSTANT_STRING(L"\\Driver\\UMPM");
+
+	return IoCreateDriver(&driver_name, entry);
+}
+
+*/

@@ -24,24 +24,17 @@ int main() {
 	auto allocation = VirtualAlloc(nullptr, 0x2000, MEM_RESERVE, PAGE_NOACCESS);
 
 	allocation = VirtualAlloc(allocation, 0x1000, MEM_COMMIT, PAGE_READWRITE);
-
-	if (!VirtualLock(allocation, 0x1000)) 
+	memset(allocation, -1, 0x1000);
+	if (!VirtualLock(allocation, 0x1000))
 		std::println("failed to lock");
 
-	// we place a magic value at the start, necessary for us and the driver
-	*reinterpret_cast<volatile std::uint64_t*>(allocation) = reinterpret_cast<std::uint64_t>(allocation);
+	// place a magic value at the beginning of the page thats used to self reference, useful to check if the unmapping was successful
+	*static_cast<std::uint8_t**>(allocation) = static_cast<std::uint8_t*>(allocation);
 
 	std::uint64_t old_pfn{};
-	DWORD bytes_returned = 0;
-	auto success = driver::io(driver::control_codes::create_recursive_pte, allocation, sizeof(allocation), &old_pfn, sizeof(old_pfn));
+	auto success = driver::io(driver::control_codes::create_recursive_pte, &allocation, sizeof(allocation), &old_pfn, sizeof(old_pfn));
 	if (!success) {
 		std::println("{}", std::error_code(GetLastError(), std::system_category()).message());
-		return 1;
-	}
-
-	// the magic shouldnt be there anymore, page got remapped
-	if (*reinterpret_cast<volatile std::uint64_t*>(allocation) == reinterpret_cast<std::uint64_t>(allocation)) {
-		std::println("failed to create recursive pte");
 		return 1;
 	}
 
@@ -84,7 +77,7 @@ int main() {
 		(end - start),
 		std::chrono::duration_cast<std::chrono::microseconds>(end - start),
 		std::chrono::duration_cast<std::chrono::milliseconds>(end - start));
-	
+
 	if (r) {
 		std::println("found cr3: {:#x}", p.cr3);
 		std::println("{:#x}", p.translate(p.base).value_or(-1));
@@ -92,8 +85,8 @@ int main() {
 	else
 		std::println("failed to find cr3");
 
-	
-	
+
+
 
 	std::cin.get();
 	mm::cleanup();
